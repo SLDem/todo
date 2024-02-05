@@ -1,0 +1,30 @@
+{% block content %}
+<h1>Hi {{ user.username }}! This is your ToDo-List: <a href="{% url 'add_item' %}">Add another</a></h1>
+<div style="display: inline-block">
+    <form method="post">
+        <p>Filter:</p>
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Apply</button>
+        <button><a style="text-decoration: none" href="{% url 'list' %}">⟲</a></button>
+    </form>
+
+</div>
+<p>[********************]</p>
+<p>[````````````````````````````````]</p>
+{% for item in items %}
+    {{ item.category }}<br>
+    {{ item.term }}<br>
+    {{ item.description }}<br>
+    {{ item.finish_by }}<br>
+
+    {% if item.is_completed %}
+        <a style="text-decoration: none" href="{% url 'delete_task' item.pk %}">ⓧ</a>   (✔)
+    {% else %}
+        <a style="text-decoration: none" href="{% url 'delete_task' item.pk %}">ⓧ</a>
+        <a style="text-decoration: none" href="{% url 'complete_task' item.pk %}">Complete</a><br>
+    {% endif %}
+<p>[........................................]</p>
+{% endfor %}
+<p>[********************]</p>
+{% endblock %}

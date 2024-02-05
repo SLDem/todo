@@ -1,0 +1,111 @@
+version: "3"
+
+services:
+  backend:
+    build:
+      context: .
+    image: backend-image
+    container_name: backend
+    hostname: backend
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8080"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - sqlite
+      - rabbit
+    networks:
+      - shared_network
+
+  rabbit:
+    image: rabbitmq:3.13-rc
+    container_name: rabbit
+    hostname: rabbit
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+      - RABBITMQ_DEFAULT_VHOST=/
+    ports:
+      - "5682:5672"
+      - "15682:15672"
+    networks:
+      - shared_network
+
+#  worker:
+#    image: backend-image
+#    restart: on-failure
+#    command: >
+#      sh -c "celery -A todotesttask.celery worker --loglevel=info -P eventlet -s /tmp/celerybeat-schedule"
+#    environment:
+#      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@mq:15682//
+#    depends_on:
+#      - backend
+#      - rabbit
+#      - sqlite
+#    networks:
+#      - shared_network
+#
+#  beat:
+#    image: backend-image
+#    restart: on-failure
+#    command: >
+#      sh -c "celery -A todotesttask beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+#    environment:
+#      - INVENIO_CELERY_BROKER_URL=amqp://guest:guest@mq:15682//
+#    depends_on:
+#      - backend
+#      - rabbit
+#      - sqlite
+#    networks:
+#      - shared_network
+
+
+  celery:
+    build: ./todotesttask
+    command: celery -A todotesttask.celery worker --loglevel=info -P eventlet -s /tmp/celerybeat-schedule
+    volumes:
+      - ./todotesttask/:/usr/src/app/
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=django-insecure-%l2!irhcw&mido=57rn0yp=m1fx_axmx@ci)$-4y8a_c_6fod-
+    depends_on:
+      - rabbit
+
+  celery-beat:
+    build: ./todotesttask
+    command: celery -A todotesttask beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./todotesttask/:/usr/src/app/
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=django-insecure-%l2!irhcw&mido=57rn0yp=m1fx_axmx@ci)$-4y8a_c_6fod-
+    depends_on:
+      - rabbit
+
+
+  sqlite:
+    container_name: db
+    image: nouchka/sqlite3:latest
+#    command: >
+#      sh -c "python manage.py migrate &&
+#             python manage.py runserver 0.0.0.0:8080"
+    volumes:
+      - sqlite-data:/db
+    ports:
+      - "5432:5432"
+    restart: always
+
+
+volumes:
+  sqlite-data:
+
+
+networks:
+  shared_network:
+    driver: bridge
